@@ -1,0 +1,7 @@
+**/.venv/
+**/node_modules/
+**/dist/
+**/__pycache__/
+.lumen-dev/
+.codex-attachments/
+.env

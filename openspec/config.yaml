@@ -1,0 +1,6 @@
+schema: spec-driven
+
+context: |
+  All project documentation, code, identifiers, comments, logs, configuration and user-facing application text must be in English.
+  Do not create, modify or run tests unless the user explicitly requests it. Do not add CI jobs that run tests without that request.
+  The product is domain-agnostic and uses distinct configurable decision and response model roles.
