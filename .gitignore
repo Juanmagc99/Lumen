@@ -5,3 +5,4 @@
 .lumen-dev/
 .codex-attachments/
 .env
+docs/development-notes.local.md

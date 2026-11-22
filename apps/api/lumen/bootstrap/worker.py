@@ -18,11 +18,13 @@ from lumen.adapters.outbound.llm.response_model import LiteLLMResponseModel
 from lumen.adapters.outbound.llm.embeddings import OpenAIEmbeddingProvider
 from lumen.application.classify_ticket import ClassifyTicket
 from lumen.bootstrap.config import DecisionSettings, WorkerSettings, GenerationSettings, ResponseSettings, EmbeddingSettings, database_url
+from lumen.bootstrap.observability import configure_logging
 from lumen.application.generate_response import GenerateResponse
 from lumen.domain.classification import ClassificationPolicy
 
 
 def main() -> None:
+    configure_logging("worker")
     settings = WorkerSettings.from_environment()
     policy = ClassificationPolicy(settings.max_attempts, settings.retry_seconds, settings.claim_seconds)
     jobs = PostgresClassificationJobs(policy, DatabaseSessions(database_url))

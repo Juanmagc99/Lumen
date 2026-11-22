@@ -7,6 +7,7 @@ from sqlalchemy import func, select, text
 from lumen.adapters.outbound.db.models import IngestionJob, KnowledgeBase, KnowledgeDocument, KnowledgeVersion
 from lumen.adapters.outbound.db.tickets import storage_session
 from lumen.adapters.outbound.db.session import DatabaseSessions
+from lumen.domain.errors import failure_message
 
 
 class PostgresKnowledge:
@@ -41,9 +42,9 @@ class PostgresKnowledge:
             for document, version, job in rows:
                 if job.status == "ready" and document.id not in latest_ready:
                     latest_ready[document.id] = version.id
-            return [{"id": d.id, "name": d.name, "active": d.active, "version_id": v.id, "version": v.version, "status": j.status, "failure_reason": j.failure_reason,
+            return [{"id": d.id, "name": d.name, "active": d.active, "version_id": v.id, "version": v.version, "status": j.status, "failure_reason": failure_message("ingestion", j.failure_reason),
                      "semantic_status": (indexes[v.id]["status"] if v.id in indexes else "pending") if d.active and latest_ready.get(d.id) == v.id else None,
-                     "semantic_failure_reason": indexes[v.id]["failure_reason"] if v.id in indexes else None} for d, v, j in rows]
+                     "semantic_failure_reason": failure_message("indexing", indexes[v.id]["failure_reason"]) if v.id in indexes else None} for d, v, j in rows]
 
     async def create_document(self, base_id: UUID, name: str, content: str):
         async with storage_session(self._sessions) as session:
@@ -87,7 +88,7 @@ class PostgresKnowledge:
             if row is None:
                 return None
             d, v, j = row
-            return {"document_id": d.id, "name": d.name, "version_id": v.id, "version": v.version, "content": v.content, "status": j.status, "failure_reason": j.failure_reason}
+            return {"document_id": d.id, "name": d.name, "version_id": v.id, "version": v.version, "content": v.content, "status": j.status, "failure_reason": failure_message("ingestion", j.failure_reason)}
 
     async def retry(self, version_id: UUID):
         async with storage_session(self._sessions) as session:

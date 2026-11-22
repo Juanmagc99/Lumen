@@ -9,6 +9,7 @@ from sqlalchemy import func, or_, select, text, update
 from lumen.adapters.outbound.db.models import KnowledgeBase, ResponseAttempt, ResponseCallReservation, ResponseGeneration, Ticket
 from lumen.adapters.outbound.db.session import DatabaseSessions
 from lumen.adapters.outbound.db.tickets import storage_session
+from lumen.domain.errors import failure_code, failure_message
 
 
 class PostgresResponseGenerations:
@@ -40,7 +41,7 @@ class PostgresResponseGenerations:
             result = []
             for job in jobs:
                 attempts = (await session.scalars(select(ResponseAttempt).where(ResponseAttempt.generation_id == job.id).order_by(ResponseAttempt.started_at))).all()
-                result.append({"id": job.id, "ticket_id": job.ticket_id, "knowledge_base_id": job.knowledge_base_id, "status": job.status, "created_at": job.created_at, "finished_at": job.finished_at, "original_text": job.original_text, "rationale": job.rationale, "insufficient_evidence": job.insufficient_evidence, "failure_reason": job.failure_reason, "attempts": [{"status": a.status, "started_at": a.started_at, "finished_at": a.finished_at, "requested_model": a.requested_model, "reported_model": a.reported_model, "provider": a.provider, "config_version": a.config_version, "sources": a.sources, "citations": a.citations, "provider_request_id": a.provider_request_id, "input_tokens": a.input_tokens, "output_tokens": a.output_tokens, "estimated_cost": a.estimated_cost, "currency": a.currency, "pricing_basis": a.pricing_basis, "failure_reason": a.failure_reason, "retrieval_mode": a.retrieval_mode, "retrieval_reason": a.retrieval_reason, "embedding_input_tokens": a.embedding_input_tokens} for a in attempts]})
+                result.append({"id": job.id, "ticket_id": job.ticket_id, "knowledge_base_id": job.knowledge_base_id, "status": job.status, "created_at": job.created_at, "finished_at": job.finished_at, "original_text": job.original_text, "rationale": job.rationale, "insufficient_evidence": job.insufficient_evidence, "failure_reason": failure_message("generation", job.failure_reason), "attempts": [{"status": a.status, "started_at": a.started_at, "finished_at": a.finished_at, "requested_model": a.requested_model, "reported_model": a.reported_model, "provider": a.provider, "config_version": a.config_version, "sources": a.sources, "citations": a.citations, "provider_request_id": a.provider_request_id, "input_tokens": a.input_tokens, "output_tokens": a.output_tokens, "estimated_cost": a.estimated_cost, "currency": a.currency, "pricing_basis": a.pricing_basis, "failure_reason": failure_message("generation", a.failure_reason), "retrieval_mode": a.retrieval_mode, "retrieval_reason": a.retrieval_reason, "embedding_input_tokens": a.embedding_input_tokens} for a in attempts]})
             return result
 
     async def claim(self):
@@ -50,9 +51,9 @@ class PostgresResponseGenerations:
             if job is None:
                 return None
             if job.status == "running":
-                await session.execute(update(ResponseAttempt).where(ResponseAttempt.generation_id == job.id, ResponseAttempt.claim_token == job.claim_token, ResponseAttempt.status == "running").values(status="unknown", finished_at=now, failure_reason="claim_expired"))
+                await session.execute(update(ResponseAttempt).where(ResponseAttempt.generation_id == job.id, ResponseAttempt.claim_token == job.claim_token, ResponseAttempt.status == "running").values(status="unknown", finished_at=now, failure_reason="CLAIM_EXPIRED"))
             if job.attempts >= self._settings.max_attempts:
-                job.status, job.claim_token, job.claim_expires_at, job.finished_at, job.failure_reason = "failed", None, None, now, "attempts_exhausted"
+                job.status, job.claim_token, job.claim_expires_at, job.finished_at, job.failure_reason = "failed", None, None, now, "ATTEMPTS_EXHAUSTED"
                 await session.commit()
                 return None
             job.status, job.claim_token, job.claim_expires_at = "running", uuid4(), now + timedelta(seconds=self._settings.claim_seconds)
@@ -100,6 +101,7 @@ class PostgresResponseGenerations:
                 reservation.released_at = now
             attempt.finished_at = now
             if failure:
+                failure = failure_code("generation", failure)
                 attempt.status, attempt.failure_reason = "failed", failure
                 job.failure_reason = failure
                 job.status = "failed" if job.attempts >= self._settings.max_attempts else "queued"

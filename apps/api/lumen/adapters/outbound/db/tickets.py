@@ -11,6 +11,7 @@ from lumen.adapters.outbound.db.models import ClassificationJob, ClassificationO
 from lumen.adapters.outbound.db.session import DatabaseSessions
 from lumen.domain.tickets import ClassificationConflict, DuplicateOption, InvalidClassificationOption, KeyConflict, Option, StorageUnavailable, TicketFilters, TicketPage, TicketView
 from lumen.domain.responses import InvalidGeneration, ResponseConflict, ResponseView, TicketMissing
+from lumen.domain.errors import failure_code
 
 
 @asynccontextmanager
@@ -45,7 +46,7 @@ def ticket_value(ticket: Ticket) -> TicketView:
         classification_source=ticket.classification_source,
         classification_categories=[option_value(option) for option in ticket.classification_categories],
         classification_priority=option_value(ticket.classification_priority),
-        classification_failure_reason=ticket.classification_failure_reason,
+        classification_failure_reason=failure_code("classification", ticket.classification_failure_reason),
         effective_categories=[option_value(option) for option in categories],
         effective_priority=option_value(priority),
         category_origin="manual" if ticket.manual_categories_override else ticket.classification_source,

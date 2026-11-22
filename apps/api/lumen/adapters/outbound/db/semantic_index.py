@@ -43,7 +43,7 @@ class PostgresSemanticIndex:
             params.update(version_id=row["version_id"], token=uuid4())
             if row["attempts"] >= 3:
                 await session.execute(text("""UPDATE semantic_index_jobs SET status='failed', claim_token=NULL,
-                    claim_expires_at=NULL, failure_reason='Indexing attempts exhausted.'
+                    claim_expires_at=NULL, failure_reason='ATTEMPTS_EXHAUSTED'
                     WHERE version_id=:version_id AND model=:model AND dimensions=:dimensions"""), params)
                 await session.commit()
                 return None
@@ -76,7 +76,7 @@ class PostgresSemanticIndex:
             if row is None:
                 return False
             if failure or not row["active"] or not row["current"]:
-                params = dict(claim, status="failed" if row["attempts"] >= 3 else "pending", reason="Semantic indexing unavailable.")
+                params = dict(claim, status="failed" if row["attempts"] >= 3 else "pending", reason="INDEXING_FAILED")
                 await session.execute(text("""UPDATE semantic_index_jobs SET status=:status, failure_reason=:reason,
                     available_at=now()+interval '10 seconds', claim_token=NULL, claim_expires_at=NULL
                     WHERE version_id=:version_id AND model=:model AND dimensions=:dimensions"""), params)

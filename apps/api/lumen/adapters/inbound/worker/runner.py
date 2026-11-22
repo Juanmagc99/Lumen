@@ -11,6 +11,10 @@ from lumen.application.index_knowledge import process_semantic_index
 logger = logging.getLogger("lumen.worker")
 
 
+def log_failure(operation: str, exc: Exception) -> None:
+    logger.error("worker_operation_failed", extra={"operation": operation})
+
+
 async def run_semantic_index(jobs, provider, settings) -> None:
     while True:
         try:
@@ -19,8 +23,8 @@ async def run_semantic_index(jobs, provider, settings) -> None:
                 await asyncio.sleep(2)
             else:
                 await process_semantic_index(jobs, provider, settings, claim)
-        except Exception:
-            logger.warning("Semantic indexing unavailable; retrying")
+        except Exception as exc:
+            log_failure("semantic_index", exc)
             await asyncio.sleep(10)
 
 
@@ -32,8 +36,8 @@ async def run_ingestion(jobs) -> None:
                 await asyncio.sleep(2)
             else:
                 await process_ingestion(jobs, claim)
-        except Exception:
-            logger.warning("Ingestion storage operation failed; retrying")
+        except Exception as exc:
+            log_failure("ingestion", exc)
             await asyncio.sleep(2)
 
 
@@ -45,14 +49,13 @@ async def run_generation(jobs, generate) -> None:
                 await asyncio.sleep(2)
             else:
                 await generate.process(claim)
-        except Exception:
-            logger.warning("Generation storage operation failed; retrying")
+        except Exception as exc:
+            log_failure("generation", exc)
             await asyncio.sleep(2)
 
 
 async def run(jobs: ClassificationJobs, classify: ClassifyTicket) -> None:
-    logging.basicConfig(level=logging.INFO)
-    logger.info("Classification worker started")
+    logger.info("worker_started", extra={"operation": "classification"})
     while True:
         try:
             claim = await jobs.claim()
@@ -61,7 +64,7 @@ async def run(jobs: ClassificationJobs, classify: ClassifyTicket) -> None:
                 continue
             failure = await classify.process(claim)
             if failure:
-                logger.warning("Classification attempt failed: %s", failure)
-        except Exception:
-            logger.warning("Worker storage operation failed; retrying")
+                logger.warning("classification_attempt_failed", extra={"operation": "classification"})
+        except Exception as exc:
+            log_failure("classification", exc)
             await asyncio.sleep(2)

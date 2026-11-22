@@ -105,7 +105,7 @@ export function renderUsers(body: HTMLElement): void {
       const change = async (values: object): Promise<void> => {
         try {
           const result = await fetch(`/api/auth/users/${encodeURIComponent(user.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
-          if (!result.ok) { const data = await result.json().catch(() => null) as { detail?: string } | null; feedback.textContent = data?.detail ?? "Could not update user."; return; }
+          if (!result.ok) { const data = await result.json().catch(() => null) as { error?: { message?: string } } | null; feedback.textContent = data?.error?.message ?? "Could not update user."; return; }
           const updated = await result.json() as Account;
           if (account?.id === updated.id) {
             account = updated.active ? updated : null; updateIdentity();

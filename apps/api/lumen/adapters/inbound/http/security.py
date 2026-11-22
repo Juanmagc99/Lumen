@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from lumen.adapters.inbound.http.errors import error_response
 
 from lumen.adapters.inbound.http.authentication import COOKIE_NAME
 from lumen.domain.tickets import StorageUnavailable
@@ -79,27 +79,30 @@ def install_security(app, auth, settings: SecuritySettings):
     async def security_boundary(request: Request, call_next):
         path, method = request.url.path, request.method
         if path == "/health" and method == "GET":
+            request.state.routing_allowed = True
             return await call_next(request)
         if path == "/api/auth/login" and method == "POST":
             if not same_origin(request, settings.origin):
-                return JSONResponse({"detail": "Invalid request origin."}, status_code=403)
+                return error_response(request, "FORBIDDEN")
             if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
-                return JSONResponse({"detail": "JSON content is required."}, status_code=415)
+                return error_response(request, "UNSUPPORTED_MEDIA")
+            request.state.routing_allowed = True
             return await call_next(request)
         token = request.cookies.get(COOKIE_NAME)
         try:
             user = await auth.current(token) if token else None
         except StorageUnavailable:
-            return JSONResponse({"detail": "Storage is unavailable. Try again later."}, status_code=503)
+            return error_response(request, "STORAGE_UNAVAILABLE")
         if user is None:
-            return JSONResponse({"detail": "Sign in required."}, status_code=401)
+            return error_response(request, "UNAUTHENTICATED")
         if method not in ("GET", "HEAD", "OPTIONS") and not same_origin(request, settings.origin):
-            return JSONResponse({"detail": "Invalid request origin."}, status_code=403)
+            return error_response(request, "FORBIDDEN")
         if method in ("POST", "PATCH") and (path == "/api/auth/password" or path.startswith("/api/auth/users")) and request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
-            return JSONResponse({"detail": "JSON content is required."}, status_code=415)
+            return error_response(request, "UNSUPPORTED_MEDIA")
         required = next((role for allowed_method, pattern, role in _POLICY if method == allowed_method and re.fullmatch(pattern, path)), None)
         if required is None:
-            return JSONResponse({"detail": "Access denied."}, status_code=403)
+            return error_response(request, "FORBIDDEN")
         if required == "administrator" and user.role != "administrator":
-            return JSONResponse({"detail": "Administrator access required."}, status_code=403)
+            return error_response(request, "FORBIDDEN")
+        request.state.routing_allowed = True
         return await call_next(request)

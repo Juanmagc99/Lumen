@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response
+from lumen.adapters.inbound.http.errors import CatalogueHTTPException
 
 from lumen.adapters.inbound.http.options import OptionCreate, OptionUpdate, OptionView
 from lumen.adapters.inbound.http.schemas import ClassificationWrite, ResponseView, ResponseWrite, TicketCreate, TicketDetail, TicketPage
@@ -106,7 +107,7 @@ def router_for(tickets: Tickets) -> APIRouter:
         except TicketMissing:
             raise HTTPException(status_code=404, detail="Ticket not found.") from None
         except ClassificationConflict:
-            raise HTTPException(status_code=409, detail="Classification changed. Reload before trying again.") from None
+            raise CatalogueHTTPException("STALE_REVISION") from None
         except InvalidClassificationOption:
             raise HTTPException(status_code=422, detail="Select an active option of the correct type.") from None
         except StorageUnavailable:
@@ -127,7 +128,7 @@ def router_for(tickets: Tickets) -> APIRouter:
         except TicketMissing:
             raise HTTPException(status_code=404, detail="Ticket not found.") from None
         except ResponseConflict:
-            raise HTTPException(status_code=409, detail="Response changed. Reload the saved version before trying again.") from None
+            raise CatalogueHTTPException("STALE_REVISION") from None
         except InvalidGeneration:
             raise HTTPException(status_code=422, detail="Select a completed generation for this ticket.") from None
         except StorageUnavailable:

@@ -453,7 +453,7 @@ async function render(background = false): Promise<void> {
       if (ticket.classification_source === "model") details.append(element("p", `Model categories: ${ticket.classification_categories.map(option => `${option.name}${option.active ? " (inactive)" : ""}`).join(", ") || "Undetermined"}`));
       classification.append(details);
       if (ticket.classification_status === "failed") {
-        const reasons: Record<string, string> = { configuration: "Check the worker model, credential and timeout settings, then restart the worker.", no_options: "Activate at least one category and one priority.", invalid_decision: "The model returned an invalid or outdated suggestion.", provider: "The model provider could not complete the request." };
+        const reasons: Record<string, string> = { MODEL_CONFIGURATION: "Check the worker model, credential and timeout settings, then restart the worker.", NO_OPTIONS: "Activate at least one category and one priority.", INVALID_MODEL_OUTPUT: "The model returned an invalid or outdated suggestion.", MODEL_PROVIDER: "The model provider could not complete the request." };
         classification.append(element("p", `${reasons[ticket.classification_failure_reason ?? ""] ?? "Classification could not be completed."} You can try again.`));
         const retry = element("button", "Retry classification");
         retry.type = "button";
@@ -553,7 +553,7 @@ async function renderKnowledge(current: number): Promise<void> {
       feedback.textContent = "Saving…";
       try {
         const result = await fetch(url, init);
-        if (!result.ok) { const error = await result.json().catch(() => null); feedback.textContent = typeof error?.detail === "string" ? error.detail : "Could not save. Check the content and try again."; return; }
+        if (!result.ok) { const error = await result.json().catch(() => null); feedback.textContent = typeof error?.error?.message === "string" ? error.error.message : "Could not save. Check the content and try again."; return; }
         await renderKnowledge(current);
         const target = document.querySelector<HTMLElement>(".options-feedback"); if (target) target.textContent = message;
       } catch { feedback.textContent = "Could not save. Check the connection and try again."; }

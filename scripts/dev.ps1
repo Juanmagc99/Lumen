@@ -26,7 +26,7 @@ foreach ($name in $decisionNames) {
 function Import-LocalConfig {
     $path = Join-Path $root '.env'
     if (-not (Test-Path -LiteralPath $path)) { return }
-    $allowed = @('LUMEN_POSTGRES_USER', 'LUMEN_POSTGRES_DB', 'LUMEN_POSTGRES_PASSWORD', 'LUMEN_POSTGRES_PORT', 'LUMEN_ADMIN_USERNAME', 'LUMEN_ADMIN_PASSWORD', 'LUMEN_API_PORT', 'LUMEN_WEB_PORT', 'LUMEN_CLASSIFICATION_MAX_ATTEMPTS', 'LUMEN_CLASSIFICATION_RETRY_SECONDS', 'LUMEN_CLASSIFICATION_CLAIM_SECONDS', 'LUMEN_KNOWLEDGE_MAX_BYTES', 'LUMEN_RESPONSE_CONCURRENCY', 'LUMEN_RESPONSE_RATE_LIMIT', 'LUMEN_RESPONSE_RATE_WINDOW_SECONDS', 'LUMEN_RESPONSE_MAX_ATTEMPTS', 'LUMEN_RESPONSE_RETRY_SECONDS', 'LUMEN_RESPONSE_QUEUE_LIMIT', 'LUMEN_RESPONSE_INPUT_PRICE_PER_MILLION', 'LUMEN_RESPONSE_OUTPUT_PRICE_PER_MILLION', 'LUMEN_RESPONSE_CURRENCY', 'LUMEN_SIGNIN_FAILURE_LIMIT', 'LUMEN_EMBEDDING_MODEL', 'LUMEN_EMBEDDING_DIMENSIONS') + $decisionNames
+    $allowed = @('LUMEN_LOG_LEVEL', 'LUMEN_POSTGRES_USER', 'LUMEN_POSTGRES_DB', 'LUMEN_POSTGRES_PASSWORD', 'LUMEN_POSTGRES_PORT', 'LUMEN_ADMIN_USERNAME', 'LUMEN_ADMIN_PASSWORD', 'LUMEN_API_PORT', 'LUMEN_WEB_PORT', 'LUMEN_CLASSIFICATION_MAX_ATTEMPTS', 'LUMEN_CLASSIFICATION_RETRY_SECONDS', 'LUMEN_CLASSIFICATION_CLAIM_SECONDS', 'LUMEN_KNOWLEDGE_MAX_BYTES', 'LUMEN_RESPONSE_CONCURRENCY', 'LUMEN_RESPONSE_RATE_LIMIT', 'LUMEN_RESPONSE_RATE_WINDOW_SECONDS', 'LUMEN_RESPONSE_MAX_ATTEMPTS', 'LUMEN_RESPONSE_RETRY_SECONDS', 'LUMEN_RESPONSE_QUEUE_LIMIT', 'LUMEN_RESPONSE_INPUT_PRICE_PER_MILLION', 'LUMEN_RESPONSE_OUTPUT_PRICE_PER_MILLION', 'LUMEN_RESPONSE_CURRENCY', 'LUMEN_SIGNIN_FAILURE_LIMIT', 'LUMEN_EMBEDDING_MODEL', 'LUMEN_EMBEDDING_DIMENSIONS') + $decisionNames
     $lineNumber = 0
     foreach ($line in Get-Content -LiteralPath $path) {
         $lineNumber++
@@ -193,7 +193,7 @@ function Start-Environment {
     $uv = (Get-Command uv -CommandType Application | Select-Object -First 1).Source
     $node = (Get-Command node -CommandType Application | Select-Object -First 1).Source
     try {
-        Start-Managed 'api' $apiPort $uv @('run', '--project', 'apps/api', '--locked', 'uvicorn', 'lumen.bootstrap.api:app', '--app-dir', 'apps/api', '--no-proxy-headers', '--host', '127.0.0.1', '--port', "$apiPort")
+        Start-Managed 'api' $apiPort $uv @('run', '--project', 'apps/api', '--locked', 'uvicorn', 'lumen.bootstrap.api:app', '--app-dir', 'apps/api', '--no-access-log', '--no-proxy-headers', '--host', '127.0.0.1', '--port', "$apiPort")
         try {
             foreach ($name in $decisionNames) {
                 [Environment]::SetEnvironmentVariable($name, $decisionSettings[$name], 'Process')

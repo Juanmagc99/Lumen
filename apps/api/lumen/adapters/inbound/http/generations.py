@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from lumen.adapters.inbound.http.errors import CatalogueHTTPException
 
 
 class GenerationRequest(BaseModel):
@@ -26,7 +27,7 @@ def router_for_generations(jobs):
         if status == "missing":
             raise HTTPException(404, "Ticket or knowledge base not found.")
         if status == "full":
-            raise HTTPException(429, "Generation queue is full. Try again later.")
+            raise CatalogueHTTPException("QUEUE_FULL")
         return {"id": job_id, "status": status}
 
     return router

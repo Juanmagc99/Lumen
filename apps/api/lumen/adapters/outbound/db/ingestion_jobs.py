@@ -27,7 +27,7 @@ class PostgresIngestionJobs:
                 return None
             if job.attempts >= self._max_attempts:
                 job.status, job.claim_token, job.claim_expires_at = "failed", None, None
-                job.failure_reason = "Processing attempts exhausted."
+                job.failure_reason = "ATTEMPTS_EXHAUSTED"
                 await session.commit()
                 return None
             job.status, job.claim_token, job.claim_expires_at = "processing", uuid4(), now + timedelta(seconds=self._claim_seconds)
@@ -47,7 +47,7 @@ class PostgresIngestionJobs:
             if chunks is None:
                 job.status = "failed" if job.attempts >= self._max_attempts else "pending"
                 job.available_at = now + timedelta(seconds=10)
-                job.failure_reason = "Document processing failed."
+                job.failure_reason = "INGESTION_FAILED"
             else:
                 await session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.version_id == version_id))
                 session.add_all([KnowledgeChunk(version_id=version_id, position=index, content=part) for index, part in enumerate(chunks)])

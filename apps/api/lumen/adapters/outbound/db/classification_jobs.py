@@ -7,6 +7,7 @@ from sqlalchemy import and_, func, or_, select
 from lumen.adapters.outbound.db.session import DatabaseSessions
 from lumen.adapters.outbound.db.models import ClassificationJob, ClassificationOption, Ticket
 from lumen.domain.classification import ClaimedClassification, ClassificationDecision, ClassificationOption as OptionValue, ClassificationPolicy
+from lumen.domain.errors import failure_code
 
 
 class PostgresClassificationJobs:
@@ -31,6 +32,8 @@ class PostgresClassificationJobs:
                 return None
             if self.policy.exhausted(job.attempts):
                 job.status = "failed"
+                if not job.failure_reason:
+                    job.failure_reason = "ATTEMPTS_EXHAUSTED"
                 job.claim_token = None
                 job.claim_expires_at = None
                 await session.commit()
@@ -78,7 +81,7 @@ class PostgresClassificationJobs:
                 job.priority_id = decision.priority_id
                 job.failure_reason = None
             else:
-                job.failure_reason = failure_reason or "provider"
+                job.failure_reason = failure_code("classification", failure_reason or "provider")
                 if self.policy.exhausted(job.attempts):
                     job.status = "failed"
                 else:
